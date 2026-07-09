@@ -2,6 +2,6 @@
 
 This repository contains a static demo for the Base mobile record submission page voice input flow.
 
-After GitHub Pages finishes deploying, the demo should be available at:
+The demo has also been published to the `gh-pages` branch. After GitHub Pages is enabled with source `gh-pages` / root, it will be available at:
 
 https://jaysinsu.github.io/-demo-/
