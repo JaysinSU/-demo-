@@ -3,6 +3,465 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>旧版问卷 AI 语音录入 Demo</title>
+  <style>
+    :root {
+      --blue: #2f62dc;
+      --ink: #202124;
+      --subtle: #7d8791;
+      --line: #dfe3e8;
+      --orange: #f27827;
+      --sheet: #68717b;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body { width: 100%; min-height: 100%; margin: 0; }
+
+    body {
+      display: grid;
+      place-items: center;
+      padding: 16px;
+      overflow: auto;
+      background: #eef1f5;
+      color: var(--ink);
+    }
+
+    button, input { font: inherit; }
+    button { border: 0; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+
+    .device {
+      position: relative;
+      width: min(100%, 430px);
+      height: min(900px, calc(100vh - 32px));
+      min-height: 680px;
+      overflow: hidden;
+      border: 1px solid #d4d9e0;
+      border-radius: 34px;
+      background: #fff;
+      box-shadow: 0 22px 54px rgba(37, 44, 56, .22);
+      isolation: isolate;
+    }
+
+    .app {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      background: #fff;
+    }
+
+    .watermark {
+      position: absolute;
+      inset: 0;
+      z-index: 8;
+      pointer-events: none;
+      opacity: .38;
+      overflow: hidden;
+    }
+
+    .watermark span {
+      position: absolute;
+      color: rgba(119, 132, 145, .16);
+      font-size: 17px;
+      font-weight: 650;
+      transform: rotate(-20deg);
+      white-space: nowrap;
+    }
+
+    .status {
+      position: absolute;
+      z-index: 6;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 42px;
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      padding: 0 25px 7px;
+      font-size: 14px;
+      font-weight: 750;
+      pointer-events: none;
+    }
+
+    .status-icons { display: inline-flex; align-items: center; gap: 6px; }
+    .signal { width: 20px; height: 14px; display: inline-flex; align-items: flex-end; gap: 2px; }
+    .signal i { width: 3px; background: #17191b; border-radius: 2px; }
+    .signal i:nth-child(1) { height: 5px; } .signal i:nth-child(2) { height: 8px; }
+    .signal i:nth-child(3) { height: 11px; } .signal i:nth-child(4) { height: 14px; }
+    .wifi { width: 18px; height: 13px; position: relative; border: 2px solid #17191b; border-color: #17191b transparent transparent; border-radius: 50%; transform: rotate(45deg); }
+    .wifi:after { content: ""; position: absolute; width: 4px; height: 4px; border-radius: 50%; background: #17191b; right: 1px; bottom: 1px; }
+    .battery { min-width: 25px; height: 15px; padding: 1px 4px; border-radius: 4px; background: #202124; color: #fff; font-size: 10px; line-height: 13px; text-align: center; }
+
+    .scroll-area {
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      scrollbar-width: none;
+      scroll-behavior: smooth;
+      background: #fff;
+    }
+    .scroll-area::-webkit-scrollbar { display: none; }
+
+    .nav {
+      height: 90px;
+      padding: 42px 18px 0;
+      display: grid;
+      grid-template-columns: 48px 1fr 48px;
+      align-items: center;
+      background: #fff;
+    }
+    .back { width: 44px; height: 38px; display: grid; place-items: center; background: transparent; color: #24272b; }
+    .chevron { width: 16px; height: 16px; border-left: 2.5px solid currentColor; border-bottom: 2.5px solid currentColor; transform: rotate(45deg); margin-left: 6px; }
+    .nav-title { text-align: center; font-weight: 650; font-size: 18px; }
+    .more { position: relative; justify-self: end; width: 44px; height: 38px; background: transparent; color: #202124; font-size: 24px; letter-spacing: 3px; line-height: 24px; padding-bottom: 5px; }
+    .more:after { content: ""; position: absolute; right: 2px; top: 2px; width: 8px; height: 8px; border-radius: 50%; background: #fa4b50; }
+
+    .banner {
+      position: relative;
+      height: 135px;
+      overflow: hidden;
+      background: #2e62dc;
+    }
+    .shape { position: absolute; display: block; background: rgba(115, 165, 255, .58); border-radius: 999px; transform: rotate(-42deg); }
+    .shape.a { width: 28px; height: 28px; left: 32px; top: 25px; }
+    .shape.b { width: 112px; height: 38px; left: 56px; bottom: -8px; }
+    .shape.c { width: 96px; height: 27px; left: 204px; top: 27px; opacity: .38; }
+    .shape.d { width: 21px; height: 21px; right: 68px; bottom: 25px; }
+    .shape.e { width: 45px; height: 13px; right: 16px; top: 70px; opacity: .38; }
+    .banner-dots { position: absolute; left: 75px; top: 56px; color: rgba(166, 201, 255, .68); letter-spacing: 4px; font-size: 12px; }
+    .banner-actions { position: absolute; right: 14px; top: 12px; display: flex; gap: 10px; }
+    .circle-action { width: 36px; height: 36px; display: grid; place-items: center; border-radius: 50%; background: rgba(238, 247, 255, .78); color: #5e6874; }
+    .mini-icon { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+    .form {
+      padding: 29px 26px 132px;
+      background: #fff;
+    }
+    .form-name { margin: 0 0 26px; text-align: center; font-size: 21px; line-height: 1.2; font-weight: 700; }
+    .field { position: relative; margin: 0 0 24px; scroll-margin-bottom: 260px; border-radius: 8px; transition: background .18s, box-shadow .18s; }
+    .field.highlight { background: #f1f5ff; box-shadow: 0 0 0 2px #b9ceff; }
+    .field.highlight .control { border-color: #7da6ff; }
+    .label { display: block; margin: 0 0 7px; font-size: 17px; line-height: 1.2; color: #202124; }
+    .required:before { content: "*"; margin-right: 5px; color: #f45353; }
+    .control {
+      width: 100%;
+      min-height: 48px;
+      border: 1px solid #daddE3;
+      border-radius: 6px;
+      padding: 0 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: #fff;
+      color: #838c96;
+      font-size: 16px;
+      line-height: 1;
+      transition: border-color .18s;
+    }
+    input.control { outline: none; }
+    input.control:focus { border-color: #2f6bff; box-shadow: 0 0 0 1px #2f6bff; color: #202124; }
+    .select-control { justify-content: space-between; }
+    .down { width: 0; height: 0; border-left: 5px solid transparent; border-right: 5px solid transparent; border-top: 7px solid #929aa2; margin-right: 2px; }
+    .chip { display: inline-flex; align-items: center; min-height: 30px; padding: 0 10px; border-radius: 6px; background: #e8efff; color: #252a31; font-weight: 650; font-size: 15px; }
+    .scan { margin-left: auto; width: 19px; height: 19px; color: #6f7882; fill: none; stroke: currentColor; stroke-width: 1.8; }
+    .notice { display: none; margin: 6px 0 0; color: var(--orange); font-size: 12px; line-height: 1.25; }
+    .voice-active .unsupported .notice { display: block; }
+    .voice-active .unmatched .notice { display: block; color: #ed5555; }
+    .unsupported { margin-bottom: 18px; }
+    .link-field { display: none; }
+    .voice-active .link-field { display: block; }
+    .progress-track { height: 42px; padding: 17px 10px 0; }
+    .progress-line { width: 64%; height: 8px; border-radius: 99px; background: #f0f1f3; }
+    .score { display: flex; justify-content: space-between; align-items: center; height: 30px; }
+    .score span { width: 20px; height: 20px; border-radius: 4px; display: grid; place-items: center; background: #dfe2e6; color: #fff; font-size: 11px; font-weight: 650; }
+
+    .submit { width: 100%; height: 44px; border-radius: 6px; display: flex; align-items: center; justify-content: center; gap: 12px; background: #1f2022; color: #fff; font-size: 17px; }
+    .submit-check { width: 14px; height: 8px; border-left: 2px solid #fff; border-bottom: 2px solid #fff; transform: rotate(-45deg) translateY(-2px); }
+    .footer { display: flex; align-items: center; justify-content: center; gap: 7px; margin: 86px 0 0; color: #9ca3ad; font-size: 12px; }
+    .footer:before, .footer:after { content: ""; width: 66px; height: 1px; background: #e3e4e7; }
+    .brand { color: #8258e8; font-weight: 800; font-size: 16px; }
+
+    .voice-trigger {
+      position: absolute;
+      z-index: 10;
+      left: 50%;
+      bottom: max(27px, env(safe-area-inset-bottom));
+      height: 52px;
+      padding: 0 21px;
+      transform: translateX(-50%);
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      border-radius: 999px;
+      background: #202020;
+      color: #fff;
+      font-size: 18px;
+      font-weight: 500;
+      white-space: nowrap;
+      box-shadow: 0 8px 18px rgba(28, 32, 38, .14);
+    }
+    .voice-trigger[disabled] { cursor: default; }
+    .mic { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    .spinner { width: 20px; height: 20px; border: 2px solid rgba(255,255,255,.45); border-top-color: #fff; border-radius: 50%; animation: spin .9s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .voice-sheet {
+      position: absolute;
+      z-index: 12;
+      left: 4px;
+      right: 4px;
+      bottom: 0;
+      min-height: 206px;
+      padding: 34px 20px 30px;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      border-radius: 8px 8px 0 0;
+      background: var(--sheet);
+      color: #fff;
+      box-shadow: 0 -6px 16px rgba(28, 35, 43, .12);
+    }
+    .voice-sheet.open { display: flex; }
+    .sheet-copy { margin: 0 0 25px; font-size: 18px; line-height: 1.4; text-align: center; }
+    .stop-button { width: 68px; height: 68px; display: grid; place-items: center; padding: 0; border: 3px solid #e8edf2; border-radius: 50%; background: #1e1e1f; }
+    .stop-square { width: 31px; height: 31px; border-radius: 7px; background: #fff; }
+    .parse-button { width: 68px; height: 68px; display: grid; place-items: center; border-radius: 50%; background: #c3c9d0; }
+    .parse-button .spinner { width: 31px; height: 31px; border-width: 3px; }
+
+    .toast { position: absolute; z-index: 20; left: 50%; top: 57px; transform: translateX(-50%) translateY(-8px); padding: 9px 14px; border-radius: 8px; background: rgba(27,30,35,.88); color: #fff; font-size: 13px; opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; white-space: nowrap; }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    @media (max-width: 520px) {
+      body { padding: 0; display: block; background: #fff; }
+      .device { width: 100vw; max-width: none; height: 100vh; min-height: 620px; border: 0; border-radius: 0; box-shadow: none; }
+    }
+  </style>
+</head>
+<body>
+  <main class="device" aria-label="旧版问卷 AI 语音录入 Demo">
+    <section class="app" id="app">
+      <div class="status" aria-hidden="true">
+        <span>14:51&nbsp;⌁</span>
+        <span class="status-icons"><span class="signal"><i></i><i></i><i></i><i></i></span><span class="wifi"></span><span class="battery">56</span></span>
+      </div>
+      <div class="watermark" aria-hidden="true">
+        <span style="left:-12px;top:64px">苏俊杰 6688</span><span style="left:226px;top:116px">苏俊杰 6688</span><span style="left:1px;top:245px">苏俊杰 6688</span><span style="left:213px;top:388px">苏俊杰 6688</span><span style="left:-20px;top:530px">苏俊杰 6688</span><span style="left:217px;top:680px">苏俊杰 6688</span><span style="left:3px;top:823px">苏俊杰 6688</span>
+      </div>
+      <div class="toast" id="toast">已回到表单顶部</div>
+      <div class="scroll-area" id="scrollArea">
+        <header class="nav">
+          <button class="back" id="backButton" aria-label="返回"><span class="chevron"></span></button>
+          <div class="nav-title">收集表</div>
+          <button class="more" aria-label="更多">···</button>
+        </header>
+        <section class="banner" aria-label="表单横幅">
+          <span class="shape a"></span><span class="shape b"></span><span class="shape c"></span><span class="shape d"></span><span class="shape e"></span><span class="banner-dots">····</span>
+          <div class="banner-actions">
+            <span class="circle-action"><svg class="mini-icon" viewBox="0 0 24 24"><path d="M4 20h16"/><path d="M14.5 4.5l5 5L9 20H4v-5L14.5 4.5z"/></svg></span>
+            <span class="circle-action"><svg class="mini-icon" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="2"/><path d="M8 10h8M8 14h5"/></svg></span>
+            <span class="circle-action"><svg class="mini-icon" viewBox="0 0 24 24"><path d="M5 12a7 7 0 1 0 2-5"/><path d="M5 5v5h5"/><path d="M19 12l-6-3v6z"/></svg></span>
+          </div>
+        </section>
+        <form class="form" id="form" autocomplete="off">
+          <h1 class="form-name">收集表</h1>
+
+          <div class="field" data-key="text">
+            <label class="label required" for="textInput">文本</label>
+            <input class="control" id="textInput" placeholder="请输入内容" aria-label="文本">
+          </div>
+
+          <div class="field unmatched" data-key="single">
+            <span class="label required">单选</span>
+            <button class="control select-control" type="button" data-select="single" aria-label="单选"><span class="placeholder">请选择选项</span><span class="down"></span></button>
+            <p class="notice">暂未找到匹配选项</p>
+          </div>
+
+          <div class="field unsupported link-field" data-key="link">
+            <span class="label">超链接</span>
+            <div class="control"><span class="placeholder">请输入内容</span><svg class="scan" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.1.1l2.8-2.8a5 5 0 0 0-7.1-7.1l-1.6 1.6"/><path d="M14 11a5 5 0 0 0-7.1-.1l-2.8 2.8a5 5 0 0 0 7.1 7.1l1.6-1.6"/></svg></div>
+            <p class="notice">该题目不支持语音录入，请手动填写</p>
+          </div>
+
+          <div class="field unsupported" data-key="multi">
+            <span class="label">多选</span>
+            <button class="control select-control" type="button" data-select="multi" aria-label="多选"><span class="placeholder">请选择选项</span><span class="down"></span></button>
+            <p class="notice">该题目不支持语音录入，请手动填写</p>
+          </div>
+
+          <div class="field" data-key="email">
+            <label class="label" for="emailInput">Email</label>
+            <input class="control" id="emailInput" inputmode="email" placeholder="请输入内容" aria-label="Email">
+          </div>
+
+          <div class="field" data-key="date">
+            <label class="label required" for="dateInput">日期</label>
+            <input class="control" id="dateInput" placeholder="年/月/日" aria-label="日期">
+          </div>
+
+          <div class="field" data-key="progress">
+            <span class="label">进度</span>
+            <div class="control progress-track"><span class="progress-line"></span></div>
+          </div>
+
+          <div class="field" data-key="people">
+            <span class="label required">人员</span>
+            <button class="control select-control" type="button" data-select="people" aria-label="人员"><span class="placeholder">请选择人员</span><span class="down"></span></button>
+          </div>
+
+          <div class="field" data-key="score">
+            <span class="label">评分</span>
+            <div class="score" aria-label="评分"><span>0</span><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span><span>9</span><span>10</span></div>
+          </div>
+
+          <div class="field" data-key="barcode">
+            <label class="label" for="barcodeInput">条码</label>
+            <div class="control"><input id="barcodeInput" style="border:0;outline:0;padding:0;width:100%;min-width:0;color:#202124" placeholder="请输入内容" aria-label="条码"><svg class="scan" viewBox="0 0 24 24"><path d="M4 8V4h4M16 4h4v4M20 16v4h-4M8 20H4v-4"/><path d="M7 8v8M10 8v8M14 8v8M17 8v8"/></svg></div>
+          </div>
+
+          <button class="submit" type="button" id="submitButton"><span class="submit-check"></span>提交</button>
+          <div class="footer"><span class="brand">◆</span><span>飞书多维表格&nbsp;&nbsp;提供技术支持</span></div>
+        </form>
+      </div>
+
+      <button class="voice-trigger" id="voiceTrigger" type="button"><svg class="mic" viewBox="0 0 24 24"><rect x="8" y="3" width="8" height="12" rx="4"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3M8 21h8"/></svg><span>AI 语音录入</span></button>
+      <section class="voice-sheet" id="voiceSheet" aria-live="polite">
+        <p class="sheet-copy" id="sheetCopy">正在聆听，请说话</p>
+        <button class="stop-button" id="stopButton" type="button" aria-label="结束录音"><span class="stop-square"></span></button>
+      </section>
+    </section>
+  </main>
+
+  <script>
+    (() => {
+      const app = document.getElementById('app');
+      const scrollArea = document.getElementById('scrollArea');
+      const voiceTrigger = document.getElementById('voiceTrigger');
+      const voiceSheet = document.getElementById('voiceSheet');
+      const sheetCopy = document.getElementById('sheetCopy');
+      const stopButton = document.getElementById('stopButton');
+      const toast = document.getElementById('toast');
+      const textInput = document.getElementById('textInput');
+      const emailInput = document.getElementById('emailInput');
+      let phase = 'idle';
+      let timers = [];
+      let userNavigated = false;
+      let autoFollowing = false;
+
+      const setTimer = (fn, delay) => timers.push(window.setTimeout(fn, delay));
+      const clearTimers = () => { timers.forEach(window.clearTimeout); timers = []; };
+      const field = (key) => document.querySelector(`[data-key="${key}"]`);
+      const selectControl = (key) => document.querySelector(`[data-select="${key}"]`);
+
+      function showToast(message) {
+        toast.textContent = message;
+        toast.classList.add('show');
+        setTimer(() => toast.classList.remove('show'), 1500);
+      }
+
+      function highlight(key) {
+        const target = field(key);
+        if (!target) return;
+        document.querySelectorAll('.field.highlight').forEach(item => item.classList.remove('highlight'));
+        target.classList.add('highlight');
+        if (!userNavigated) {
+          autoFollowing = true;
+          target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          setTimer(() => { autoFollowing = false; }, 720);
+        }
+        setTimer(() => target.classList.remove('highlight'), 820);
+      }
+
+      function setChoice(key, value) {
+        const control = selectControl(key);
+        if (!control) return;
+        control.querySelector('.placeholder').replaceWith(Object.assign(document.createElement('span'), { className: 'chip', textContent: value }));
+      }
+
+      function clearVoiceNotices() {
+        app.classList.remove('voice-active');
+        document.querySelectorAll('.field.highlight').forEach(item => item.classList.remove('highlight'));
+      }
+
+      function returnToIdle() {
+        clearTimers();
+        clearVoiceNotices();
+        voiceSheet.classList.remove('open');
+        voiceTrigger.style.display = 'inline-flex';
+        voiceTrigger.disabled = false;
+        voiceTrigger.innerHTML = '<svg class="mic" viewBox="0 0 24 24"><rect x="8" y="3" width="8" height="12" rx="4"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3M8 21h8"/></svg><span>AI 语音录入</span>';
+        phase = 'idle';
+      }
+
+      function parseVoice() {
+        if (phase !== 'listening') return;
+        clearTimers();
+        phase = 'parsing';
+        sheetCopy.textContent = '解析中，请稍后';
+        stopButton.className = 'parse-button';
+        stopButton.disabled = true;
+        stopButton.setAttribute('aria-label', '正在解析');
+        stopButton.innerHTML = '<span class="spinner"></span>';
+        setTimer(returnToIdle, 1700);
+      }
+
+      function fillVoice() {
+        phase = 'listening';
+        app.classList.add('voice-active');
+        voiceSheet.classList.add('open');
+        sheetCopy.textContent = '正在聆听，请说话';
+        stopButton.className = 'stop-button';
+        stopButton.disabled = false;
+        stopButton.setAttribute('aria-label', '结束录音');
+        stopButton.innerHTML = '<span class="stop-square"></span>';
+
+        setTimer(() => { highlight('text'); textInput.value = 'newword'; }, 650);
+        setTimer(() => { highlight('single'); }, 1850);
+        setTimer(() => { highlight('single'); setChoice('single', 'newword'); }, 3050);
+        setTimer(() => { highlight('multi'); }, 4350);
+        setTimer(() => { highlight('email'); emailInput.value = '123456789@qq.com'; }, 5750);
+      }
+
+      function prepareVoice() {
+        if (phase !== 'idle') return;
+        userNavigated = false;
+        phase = 'preparing';
+        voiceTrigger.disabled = true;
+        voiceTrigger.innerHTML = '<span class="spinner"></span><span>准备中...</span>';
+        setTimer(() => { voiceTrigger.style.display = 'none'; fillVoice(); }, 2000);
+      }
+
+      voiceTrigger.addEventListener('click', prepareVoice);
+      stopButton.addEventListener('click', parseVoice);
+      scrollArea.addEventListener('scroll', () => { if (phase === 'listening' && !autoFollowing) userNavigated = true; }, { passive: true });
+      scrollArea.addEventListener('touchstart', () => { if (phase === 'listening') userNavigated = true; }, { passive: true });
+      scrollArea.addEventListener('wheel', () => { if (phase === 'listening') userNavigated = true; }, { passive: true });
+
+      document.querySelectorAll('[data-select]').forEach(control => control.addEventListener('click', () => {
+        if (phase === 'listening') return;
+        const label = control.querySelector('.placeholder');
+        if (label) label.textContent = '请选择选项';
+      }));
+      document.getElementById('backButton').addEventListener('click', () => { scrollArea.scrollTo({ top: 0, behavior: 'smooth' }); showToast('已回到表单顶部'); });
+      document.getElementById('submitButton').addEventListener('click', () => showToast('Demo 中已模拟提交'));
+
+      document.addEventListener('pointerdown', (event) => {
+        if (event.target.closest('input, button, .voice-sheet')) return;
+        const active = document.activeElement;
+        if (active && active.tagName === 'INPUT') active.blur();
+      });
+    })();
+  </script>
+</body>
+</html>
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Base 移动端 AI 语音录入 Demo</title>
   <style>
     :root {
