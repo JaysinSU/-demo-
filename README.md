@@ -1,13 +1,13 @@
-# Base AI Mobile Query Demo
+# Base 移动端 AI Demo
 
-本仓库包含 Base AI 移动端问数体验 Demo：
+本仓库包含两个 Base 移动端 Demo：
 
-- 根目录的 `index.html` 是可独立运行的静态演示页面。
-- `base-ai-mobile-query-demo/` 包含完整项目源码。
+- 根目录的 `index.html`：记录提交页的 AI 语音录入 Demo，单个静态页面，可直接在浏览器打开。
+- `base-ai-mobile-query-demo/`：AI 移动端问数 Demo 的完整项目源码。
 
 ## GitHub Pages 在线体验
 
-独立演示页面：https://jaysinsu.github.io/-demo-/
+语音录入 Demo：https://jaysinsu.github.io/-demo-/
 
 移动端问数 Demo：https://jaysinsu.github.io/-demo-/base-ai-mobile-query-demo/
 
