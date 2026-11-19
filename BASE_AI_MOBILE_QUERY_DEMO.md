@@ -20,5 +20,4 @@ https://jaysinsu.github.io/-demo-/base-ai-mobile-query-demo/
 
 ## 源码
 
-仓库中的 `base-ai-mobile-query-demo.zip` 包含完整项目源码及静态 HTML 构建方式。
-
+完整项目源码位于 [`base-ai-mobile-query-demo/`](./base-ai-mobile-query-demo/) 目录。
